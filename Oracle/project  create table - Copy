@@ -1,0 +1,153 @@
+
+create table iron_requirement_chart(
+
+category varchar(20),
+
+age integer,
+
+iron_required number(4),
+
+constraint iron_requirement_chart_pk
+
+primary key(age,category));
+
+
+
+create table person(
+
+username varchar(20),
+
+password varchar(20),
+
+first_name varchar(10),
+
+last_name varchar(10),
+
+height number(4),
+
+weight number(4),
+
+age number(4),
+
+BMI number(4),
+
+gender varchar(2),
+
+category varchar(20),
+
+iron_required number(4),
+
+constraint person_pk
+
+primary key(username),
+
+constraint person_fk
+
+foreign key(category,age) references iron_requirement_chart(category,age));
+
+
+
+create table daily_database(
+
+username varchar(20),
+
+date1 date,
+
+total_iron_consumed number(4),
+
+constraint daily_database_pk
+
+primary key(username,date1),
+
+constraint daily_database_fk
+
+foreign key(username) references person(username));
+
+
+
+create table food(
+
+food_name varchar(50),
+
+iron_content number(6,3),
+
+quantity number(4),
+
+qtype varchar(30),
+constraint food_pk
+
+primary key(food_name));
+
+
+
+create table food_consumed(
+
+username varchar(20),
+date1 date,
+food_name varchar(50),
+
+quantity number(4),
+
+qtype varchar(30),
+food_iron_content number(6,3),
+
+constraint food_consumed_pk
+
+primary key(username,date1,food_name,quantity),
+
+/*constraint food_consumed_fk1
+
+foreign key(username,date1) references daily_database(username,date1),*/
+
+constraint food_consumed_fk2
+
+foreign key(food_name) references food(food_name));
+
+
+
+create table ingredient(
+
+ingredient_name varchar(50),
+
+quantity number(4),
+
+qtype varchar(30),
+iron_content number(6,3),
+
+constraint ingredient_pk
+
+primary key(ingredient_name));
+
+
+
+create table contains(
+
+food_name varchar(50),
+
+ingredient_name varchar(50),
+
+quantity number(4),
+
+qtype varchar(30),
+ingredient_iron_content number(6,3),
+
+constraint contains_pk
+
+primary key(food_name,ingredient_name),
+
+constraint contains_fk1
+
+foreign key(food_name) references food(food_name),
+
+constraint contains_fk2
+
+foreign key(ingredient_name) references ingredient(ingredient_name));
+
+
+alter table iron_requirement_chart add constraint check_category check (category in ('infants','children','male','female','pregnant','lactating'));
+
+alter table person add constraint check_category check (categoryp in ('infants','children','male','female','pregnant','lactating'));
+
+alter table person add constraint check_gender check (gender in ('male','female'));
+
+alter table food modify iron_content number(6,3);

@@ -1,0 +1,208 @@
+1)sign_up
+create or replace procedure sign_up(username1 varchar2,first_name1 varchar2,last_name1 varchar2,password1 varchar2,height1 number,weight1 number,age1 number,gender1 varchar2,category1 varchar2)
+as
+v_bmi number(5);
+v_iron_require number(4);
+flag number(3):=0;
+user varchar(20);
+cursor c is select username from person;
+begin
+open c;
+loop
+fetch c into user;
+exit when c%NOTFOUND;
+if user=username1 then
+flag:=flag+1;
+end if;
+end loop;
+close c;
+if flag=0 then
+v_bmi:=(weight1*10000)/(height1*height1);
+select iron_required into v_iron_require from iron_requirement_chart where age=age1 and category=category1;
+insert into person values(username1,password1,first_name1,last_name1,height1,weight1,age1,v_bmi,gender1,category1,v_iron_require);
+dbms_output.put_line('successfully signed up');
+else
+dbms_output.put_line('username already exist');
+end if;
+end;
+/
+execute sign_up('&username','&first_name','&last_name','&password',&height,&weight,&age,'&gender','&category');
+2)log_in
+create or replace procedure log_in(username1 varchar2,password1 varchar2)
+as
+v_password varchar(20);
+flag number(3):=0;
+user varchar(20);
+cursor c is select username from person;
+begin
+open c;
+loop
+fetch c into user;
+exit when c%NOTFOUND;
+if user=username1 then
+flag:=flag+1;
+end if;
+end loop;
+close c;
+if flag=0 then
+dbms_output.put_line('enter a valid user name ! username does not exist');
+else
+select password into v_password from person where username=username1;
+if password1=v_password then
+dbms_output.put_line('log_in successful');
+display(username1);
+date_remainder(username1);
+date_insert(username1);
+else
+dbms_output.put_line('invalid username and password');
+end if;
+end if;
+end;
+/
+
+create or replace procedure date_remainder(username2 varchar2)
+as 
+v_date date;
+v_date1 date;
+v_count number(4);
+begin
+select to_char(max(date1),'DD-MON-YYYY') into v_date from daily_database where username=username2;
+select to_char(sysdate,'DD-MON-YYYY') into v_date1 from dual;
+v_count:=v_date1-v_date;
+if v_count=2 then
+dbms_output.put_line('You missed one day');
+elsif v_count>2 then
+dbms_output.put_line('you_missed '||v_count-1||'days');
+end if;
+end;
+/
+create or replace procedure display(username1 varchar2)
+as
+v_username varchar(20);
+v_firstname varchar(20);
+v_lastname varchar(20);
+v_gender varchar(20);
+v_category varchar(20);
+v_age number(4);
+v_weight number(4);
+v_height number(4);
+v_bmi number(4);
+v_ironrequired number(4);
+begin
+select username,first_name,last_name,gender,category,age,weight,height,bmi,iron_required into
+v_username,v_firstname,v_lastname,v_gender,v_category,v_age,v_weight,v_height,v_bmi,v_ironrequired from person where username=username1;
+dbms_output.put_line('username: '||v_username);
+dbms_output.put_line('firstname: '||v_firstname);
+dbms_output.put_line('lastname : '||v_lastname);
+dbms_output.put_line('gender : '||v_gender);
+dbms_output.put_line('category : '||v_category);
+dbms_output.put_line('age : '||v_age);
+dbms_output.put_line('weight : '||v_weight );
+dbms_output.put_line('height : '||v_height );
+dbms_output.put_line('bmi : '||v_bmi);
+dbms_output.put_line('*****************Your per day iron requirement is '||v_ironrequired||'******************');
+end;
+/
+create or replace procedure date_insert(username1 varchar2)
+as
+v_date date;
+c_date date;
+v_date1 date;
+flag number(3):=0;
+cursor c is select to_char(date1,'DD-MON-YYYY') from daily_database where username=username1;
+begin
+select to_char(sysdate,'DD-MON-YYYY') into v_date from dual;
+select sysdate into v_date1 from dual;
+open c;
+loop
+fetch c into c_date;
+exit when c%NOTFOUND ; 
+if v_date=c_date then 
+flag:=flag+1;
+end if;
+end loop;
+close c;
+if flag=0 then
+insert into daily_database(username,date1) values(username1,v_date);
+end if;
+end;
+/
+3)entering food consumed 
+
+create or replace procedure insert_food(username1 varchar2,food_name1 varchar2,quantity1 number)
+as 
+v_iron number(6,3);
+v_iron1 number(6,3);
+v_quantity number(6,3);
+qtype1 varchar(30);
+date2 date;
+begin
+select to_char(sysdate,'DD-MON-YYYY') into date2 from dual;
+select iron_content,quantity,qtype into v_iron,v_quantity,qtype1 from food where food_name=food_name1;
+v_iron1:=quantity1*(v_iron/v_quantity);
+insert into food_consumed values(username1,date2,food_name1,quantity1,qtype1,v_iron1);
+end;
+/
+execute insert_food('&username','&food_name','&quantity');
+
+4)
+create or replace function total_iron(username1 varchar2)
+return number is 
+ic number(6,3);
+tic number(6,3):=0;
+v_date date;
+cursor c is select food_iron_content from food_consumed where username=username1 and to_char(date1,'DD-MM-YYYY') in (select to_char(sysdate,'DD-MM-YYYY') from dual);
+begin
+select to_char(sysdate,'DD-MON-YYYY') into v_date from dual;
+open c;
+loop
+fetch c into ic;
+exit when c%NOTFOUND;
+tic:=tic+ic;
+end loop;
+close c;
+return tic;
+end;
+/
+create or replace procedure insert_total_iron(username1 varchar2)
+as
+tic number(6,3);
+tic1 number(6,3);
+begin
+select iron_required into tic1 from person where username=username1;
+tic:=total_iron(username1);
+update daily_database set total_iron_consumed=tic ;
+dbms_output.put_line('total iron consumed for today: '||tic);
+if tic<tic1 then
+dbms_output.put_line('********warning!!!failed to consume require amount of food******** ');
+print(username1);
+else
+dbms_output.put_line('******you have consumed require amount of food today*******');
+end if;
+end;
+/ 
+
+create or replace procedure print(username1 varchar2)
+as
+v_count number(5):=0;
+v_ic number(6,3);
+v_ic1 number(6,3);
+cursor c is select total_iron_consumed from daily_database where username=username1;
+begin
+select iron_required into v_ic1 from person where username=username1;
+open c;
+loop
+fetch c into v_ic;
+exit when c%NOTFOUND;
+if  v_ic<v_ic1 then
+v_count:=v_count+1; 
+else
+v_count:=0;
+end if;
+end loop;
+close c;
+if  v_count>10 then
+dbms_output.put_line('consecutively ur consuming less iron content food');
+end if;
+end;
+/
